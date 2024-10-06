@@ -1,0 +1,119 @@
+import { Entity, EntityBase, Fields, Relations, remult } from 'remult'
+
+import { Specimen } from './Specimen'
+import { Taxa } from './Taxa'
+
+const sexes = ['unknown', 'male', 'female', 'gynandromorph'] as const
+export type Sex = (typeof sexes)[number]
+
+// add `status` = [accepted, outdated, proposed, declined]
+//      accepted - collection owner selected ID
+//      outdated - previous accepted ID (for historical reasons)
+//      proposed - ID by someone else. Can change state to `accepted` or `declined`
+//      declined - collection owner disagrees with ID
+const idstatuses = ['accepted', 'outdated', 'proposed', 'declined'] as const
+export type IdentificationStatus = (typeof idstatuses)[number]
+
+@Entity<Identification>('identifications', {
+  allowApiCrud: true,
+  saved: async (id, e) => {
+    if ((e.fields.status.valueChanged() || e.isNew) && id.status == 'accepted') {
+      // make sure the relation is loaded
+      const s = await e.fields.specimen.load()
+      const t = await e.fields.taxa.load()
+
+      // outdate previous accepted identification
+      await remult
+        .repo(Specimen)
+        .relations(<Specimen>/* get rid of ts(2345) */ s)
+        .identifications.updateMany({
+          where: {
+            id: { $not: id.id },
+            status: 'accepted',
+          },
+          set: {
+            status: 'outdated',
+          },
+        })
+
+      await remult.repo(Specimen).update(s!.id, { acceptedTaxa: t })
+    }
+  },
+})
+export class Identification {
+  @Fields.cuid({
+    allowApiUpdate: false,
+    required: true,
+    caption: 'Database ID',
+  })
+  id!: string
+
+  @Relations.toOne(() => Taxa, {
+    // TODO on saving - "Taxa: Should not be empty"
+    // required: true
+  })
+  taxa?: Taxa
+
+  @Relations.toOne(() => Specimen, {
+    // TODO on saving - "Specimen: Shoud not be empty"
+    // required: true
+  })
+  specimen?: Specimen
+
+  @Fields.literal(() => idstatuses, {
+    caption: 'Status',
+  })
+  status?: IdentificationStatus
+
+  @Fields.string({
+    caption: 'Form name',
+    // TODO add validation - can be accessible only for "species" taxa ideintification (not genera or higher)
+  })
+  form?: string = ''
+
+  @Fields.string({
+    caption: 'Form authorship',
+    // TODO add validation - can be accessible only for "species" taxa ideintification (not genera or higher)
+  })
+  formAuthorship?: string = ''
+
+  // TODO - in this case taxa points to parent taxon rank
+  @Fields.string({
+    caption: 'Subspecies name',
+  })
+  customTaxon?: string = ''
+
+  // TODO - in this case taxa points to parent taxon rank
+  @Fields.string({
+    caption: 'Subspecies authorship',
+  })
+  customTaxonAuthorship?: string = ''
+
+  @Fields.literal(() => sexes, {
+    caption: 'Sex',
+  })
+  sex?: Sex = 'unknown'
+
+  @Fields.boolean({
+    caption: 'Is aberratied?',
+  })
+  isAberrated?: boolean = false
+
+  // TODO - add link to User; save his name into this field
+  //        if user change his name - notify collection owner and give UI to update changes or keep id_name as is
+  @Fields.string({
+    caption: 'Who make identification',
+  })
+  idName: string = ''
+
+  @Fields.string({
+    caption: 'Det. date',
+  })
+  idDate: string = ''
+
+  @Fields.createdAt()
+  createdAt?: Date
+
+  @Fields.updatedAt()
+  updatedAt?: Date
+}
