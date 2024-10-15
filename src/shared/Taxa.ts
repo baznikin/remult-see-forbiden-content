@@ -1,4 +1,4 @@
-import { Entity, Fields } from 'remult'
+import { Allow, Entity, Fields, remult } from 'remult'
 
 const taxonRanks = [
   'family',
@@ -15,7 +15,9 @@ const taxonRanks = [
 export type TaxonRank = (typeof taxonRanks)[number]
 
 @Entity('taxas', {
-  allowApiCrud: true,
+  allowApiCrud: Allow.authenticated,
+  allowApiInsert: 'admin',
+  allowApiDelete: 'admin',
 })
 export class Taxa {
   @Fields.cuid({

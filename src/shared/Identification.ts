@@ -1,7 +1,8 @@
-import { Entity, EntityBase, Fields, Relations, remult } from 'remult'
+import { Entity, EntityBase, Fields, Relations, remult, Validators } from 'remult'
 
 import { Specimen } from './Specimen'
 import { Taxa } from './Taxa'
+import { User } from './User'
 
 const sexes = ['unknown', 'male', 'female', 'gynandromorph'] as const
 export type Sex = (typeof sexes)[number]
@@ -17,6 +18,7 @@ export type IdentificationStatus = (typeof idstatuses)[number]
 @Entity<Identification>('identifications', {
   allowApiCrud: true,
   saved: async (id, e) => {
+    // Enforce only one `accepted` identification for each specimen
     if ((e.fields.status.valueChanged() || e.isNew) && id.status == 'accepted') {
       // make sure the relation is loaded
       const s = await e.fields.specimen.load()
@@ -59,6 +61,16 @@ export class Identification {
     // required: true
   })
   specimen?: Specimen
+
+  @Relations.toOne(() => User, {
+    allowApiUpdate: false,
+    validate: [Validators.notNull],
+    saving: async (_, fieldRef, e) => {
+      if (remult.user?.id) fieldRef.value = <User>await remult.repo(User).findId(remult.user.id)
+      // TODO add fallback as 'system user'?
+    },
+  })
+  owner: User = <User>remult.user
 
   @Fields.literal(() => idstatuses, {
     caption: 'Status',

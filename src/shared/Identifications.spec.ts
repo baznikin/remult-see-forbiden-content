@@ -2,27 +2,48 @@ import { beforeEach, describe, expect, test } from 'vitest'
 
 import { InMemoryDataProvider, remult, repo } from 'remult'
 
+import { Collection } from './Collection'
 import { Identification } from './Identification'
 import { Specimen } from './Specimen'
 import { Taxa } from './Taxa'
+import { User } from './User'
 
 describe('model Identification tests', async () => {
+  let c1: Collection
   let s1: Specimen
   let t1: Taxa
   beforeEach(async () => {
+    User.hashPassword = async (s) => {
+      return <string>s
+    }
     remult.dataProvider = new InMemoryDataProvider()
+    let u1 = await repo(User).insert({
+      id: 'owner',
+      email: 'e1@e',
+    })
+
+    c1 = await repo(Collection).insert({
+      id: '1',
+      owner: u1,
+      name: 'public collection',
+      prefix: 'c1',
+    })
     s1 = await repo(Specimen).insert({
       collection_id: 'n1',
       collection_location: 'here',
       collection_date: '1.I.1900',
       collection_collector: 'Me',
+      collection: c1,
+      owner: u1,
     })
     t1 = await repo(Taxa).insert({
       genus: 'Taxa1',
       species: 'taxa1',
       authorship: 'Me (1)',
     })
+    console.log('before: ', s1.collection?.name)
     await repo(Specimen).relations(s1).identifications.insert({ status: 'accepted', taxa: t1 })
+    console.log('after')
   })
 
   test('New Identification updates previous one as out dated', async () => {

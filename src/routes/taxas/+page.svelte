@@ -11,7 +11,7 @@
   export let data
 
   // entitiy validation error from remult
-  export let err: any
+  let validationError: any
 
   // get the repo
   const taxaRepo = remult.repo(Taxa)
@@ -33,7 +33,7 @@
   let link_ermak: string = ''
   let link_omflies: string = ''
   const add = async () => {
-    err = {}
+    validationError = {}
     try {
       await remult.repo(Taxa).insert({
         kingdom: kingdom,
@@ -62,7 +62,7 @@
       link_ermak = ''
       link_omflies = ''
     } catch (e) {
-      err = (<ErrorInfo>e).modelState
+      validationError = (<ErrorInfo>e).modelState
     }
   }
   async function deleteTask(taxa: Taxa) {
@@ -76,81 +76,83 @@
 
 <h2>taxas</h2>
 
-<form on:submit|preventDefault={add}>
-  <label for="collection_id">{taxaRepo.fields.kingdom.caption}</label>
-  {#if err?.kingdom}
-    <span>{err.kingdom}</span>
-  {/if}
-  <input type="kingdom" bind:value={kingdom} />
+{#if taxaRepo.metadata.apiInsertAllowed()}
+  <form on:submit|preventDefault={add}>
+    <label for="collection_id">{taxaRepo.fields.kingdom.caption}</label>
+    {#if validationError?.kingdom}
+      <span>{validationError.kingdom}</span>
+    {/if}
+    <input type="kingdom" bind:value={kingdom} />
 
-  <label for="plum">{taxaRepo.fields.plum.caption}</label>
-  {#if err?.plum}
-    <span>{err.plum}</span>
-  {/if}
-  <input type="plum" bind:value={plum} />
+    <label for="plum">{taxaRepo.fields.plum.caption}</label>
+    {#if validationError?.plum}
+      <span>{validationError.plum}</span>
+    {/if}
+    <input type="plum" bind:value={plum} />
 
-  <label for="class_rank">{taxaRepo.fields.class_rank.caption}</label>
-  {#if err?.class_rank}
-    <span>{err.class_rank}</span>
-  {/if}
-  <input type="class_rank" bind:value={class_rank} />
+    <label for="class_rank">{taxaRepo.fields.class_rank.caption}</label>
+    {#if validationError?.class_rank}
+      <span>{validationError.class_rank}</span>
+    {/if}
+    <input type="class_rank" bind:value={class_rank} />
 
-  <label for="order">{taxaRepo.fields.order.caption}</label>
-  {#if err?.order}
-    <span>{err.order}</span>
-  {/if}
-  <input type="order" bind:value={order} />
+    <label for="order">{taxaRepo.fields.order.caption}</label>
+    {#if validationError?.order}
+      <span>{validationError.order}</span>
+    {/if}
+    <input type="order" bind:value={order} />
 
-  <label for="family">{taxaRepo.fields.family.caption}</label>
-  {#if err?.family}
-    <span>{err.family}</span>
-  {/if}
-  <input type="family" bind:value={family} />
+    <label for="family">{taxaRepo.fields.family.caption}</label>
+    {#if validationError?.family}
+      <span>{validationError.family}</span>
+    {/if}
+    <input type="family" bind:value={family} />
 
-  <label for="genus">{taxaRepo.fields.genus.caption}</label>
-  {#if err?.genus}
-    <span>{err.genus}</span>
-  {/if}
-  <input type="genus" bind:value={genus} />
+    <label for="genus">{taxaRepo.fields.genus.caption}</label>
+    {#if validationError?.genus}
+      <span>{validationError.genus}</span>
+    {/if}
+    <input type="genus" bind:value={genus} />
 
-  <label for="species">{taxaRepo.fields.species.caption}</label>
-  {#if err?.species}
-    <span>{err.species}</span>
-  {/if}
-  <input type="species" bind:value={species} />
+    <label for="species">{taxaRepo.fields.species.caption}</label>
+    {#if validationError?.species}
+      <span>{validationError.species}</span>
+    {/if}
+    <input type="species" bind:value={species} />
 
-  <label for="authorship">{taxaRepo.fields.authorship.caption}</label>
-  {#if err?.authorship}
-    <span>{err.authorship}</span>
-  {/if}
-  <input type="authorship" bind:value={authorship} />
+    <label for="authorship">{taxaRepo.fields.authorship.caption}</label>
+    {#if validationError?.authorship}
+      <span>{validationError.authorship}</span>
+    {/if}
+    <input type="authorship" bind:value={authorship} />
 
-  <label for="link_gbif">{taxaRepo.fields.link_gbif.caption}</label>
-  {#if err?.link_gbif}
-    <span>{err.link_gbif}</span>
-  {/if}
-  <input type="link_gbif" bind:value={link_gbif} />
+    <label for="link_gbif">{taxaRepo.fields.link_gbif.caption}</label>
+    {#if validationError?.link_gbif}
+      <span>{validationError.link_gbif}</span>
+    {/if}
+    <input type="link_gbif" bind:value={link_gbif} />
 
-  <label for="link_lw">{taxaRepo.fields.link_lw.caption}</label>
-  {#if err?.link_lw}
-    <span>{err.link_lw}</span>
-  {/if}
-  <input type="link_lw" bind:value={link_lw} />
+    <label for="link_lw">{taxaRepo.fields.link_lw.caption}</label>
+    {#if validationError?.link_lw}
+      <span>{validationError.link_lw}</span>
+    {/if}
+    <input type="link_lw" bind:value={link_lw} />
 
-  <label for="link_ermak">{taxaRepo.fields.link_ermak.caption}</label>
-  {#if err?.link_ermak}
-    <span>{err.link_ermak}</span>
-  {/if}
-  <input type="link_ermak" bind:value={link_ermak} />
+    <label for="link_ermak">{taxaRepo.fields.link_ermak.caption}</label>
+    {#if validationError?.link_ermak}
+      <span>{validationError.link_ermak}</span>
+    {/if}
+    <input type="link_ermak" bind:value={link_ermak} />
 
-  <label for="link_omflies">{taxaRepo.fields.link_omflies.caption}</label>
-  {#if err?.link_omflies}
-    <span>{err.link_omflies}</span>
-  {/if}
-  <input type="link_omflies" bind:value={link_omflies} />
+    <label for="link_omflies">{taxaRepo.fields.link_omflies.caption}</label>
+    {#if validationError?.link_omflies}
+      <span>{validationError.link_omflies}</span>
+    {/if}
+    <input type="link_omflies" bind:value={link_omflies} />
 
-  <button type="submit" class="btn w-64 rounded-full">Add</button>
-</form>
+    <button type="submit" class="btn w-64 rounded-full">Add</button>
+  </form>
+{/if}
 
 <div class="overflow-x-auto">
   <table class="table">
@@ -186,8 +188,10 @@
             {/if}
           </td>
           <th>
-            <button class="btn btn-ghost btn-xs">Details</button>
-            <button class="btn btn-ghost btn-xs" on:click={() => deleteTask(taxa)}>Delete</button>
+            {#if taxaRepo.metadata.apiDeleteAllowed(taxa)}
+              <button class="btn btn-ghost btn-xs">Details</button>
+              <button class="btn btn-ghost btn-xs" on:click={() => deleteTask(taxa)}>Delete</button>
+            {/if}
           </th>
         </tr>
       {/each}

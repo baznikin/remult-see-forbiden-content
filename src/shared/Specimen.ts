@@ -1,8 +1,9 @@
-import { Entity, EntityBase, Fields, Relations } from 'remult'
-import { Allow } from 'remult'
+import { Allow, Entity, EntityBase, Fields, Relations, remult, Validators } from 'remult'
 
+import { Collection } from './Collection'
 import { Identification } from './Identification'
 import { Taxa } from './Taxa'
+import { User } from './User'
 
 const spreadings = ['ventral', 'dorsal', 'lateral', 'natural', 'other'] as const
 export type SpreadingType = (typeof spreadings)[number]
@@ -11,7 +12,12 @@ const stages = ['imago', 'pupa', 'larva', 'ovo'] as const
 export type DevelopmentStage = (typeof stages)[number]
 
 @Entity('specimens', {
-  allowApiCrud: Allow.authenticated
+  allowApiCrud: Allow.authenticated,
+  // apiPrefilter: (sss) => {
+  //   return entity?.collection.visibility_setting == 'public'
+  // },
+
+  // backendPrefilter: () => remult.authenticated()?{}:{id:[]}
 })
 export class Specimen {
   @Fields.cuid({
@@ -21,11 +27,28 @@ export class Specimen {
   })
   id!: string
 
+  @Relations.toOne(() => Collection, {
+    defaultIncluded: true,
+    required: true,
+  })
+  collection?: Collection
+
   @Relations.toMany(() => Identification)
   identifications?: Identification[]
 
   @Relations.toOne(() => Taxa, { defaultIncluded: true })
   acceptedTaxa?: Taxa
+
+  @Relations.toOne(() => User, {
+    allowApiUpdate: false,
+    required: true,
+    validate: [Validators.notNull],
+    saving: async (_, fieldRef, e) => {
+      if (remult.user?.id) fieldRef.value = <User>await remult.repo(User).findId(remult.user.id)
+      // TODO add fallback as 'system user'?
+    },
+  })
+  owner: User = <User>remult.user
 
   @Fields.string({
     required: true,
