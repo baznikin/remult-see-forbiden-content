@@ -1,4 +1,4 @@
-import { Allow, Entity, Fields, Relations, Validators } from 'remult'
+import { Allow, Entity, Fields, Relations, remult, repo, Validators, type EntityFilter } from 'remult'
 
 import { OwnerField, Roles, User } from './User'
 
@@ -8,7 +8,8 @@ export type VisibilitySetting = (typeof visibility_settings)[number]
 @Entity('collections', {
   allowApiCrud: Allow.authenticated,
   allowApiRead: true,
-  // backendPrefilter: () => remult.authenticated()?{}:{id:[]}
+  apiPrefilter: async () => collectionPrefilter(),
+  backendPrefilter: async () => collectionPrefilter(),
 })
 export class Collection {
   @Fields.cuid({
@@ -72,4 +73,48 @@ export class AccessToCollection {
   @Relations.toOne<AccessToCollection, User>(() => User, 'userId')
   user?: User
   // TODO add `acitve: boolean` field to allow change visibility setting and still keep vist of users
+}
+
+async function collectionPrefilter(): Promise<EntityFilter<Collection>> {
+  console.log(new Error().stack);
+    let filter: EntityFilter<Collection>[] = [
+    {
+      visibility_setting: 'public',
+    },
+  ]
+
+  if (remult.authenticated()) {
+    filter.push({
+      visibility_setting: 'authenticated',
+    })
+
+    const user = await repo(User).findId(remult.user!.id)
+    filter.push({
+      visibility_setting: ['private', 'specified_users'],
+      owner: user!,
+    })
+
+    await repo(AccessToCollection).find({
+      where: {
+        userId: remult.user!.id,
+      },
+    })
+
+    let allowedForUser: string[] = (
+      await repo(AccessToCollection).find({
+        where: {
+          userId: remult.user!.id,
+        },
+      })
+    ).map((x) => x.collectionId!)
+
+    if (allowedForUser.length)
+      filter.push({
+        visibility_setting: 'specified_users',
+        id: allowedForUser
+      })
+  }
+
+  console.log('collectionPrefilter(): filter: ', filter)
+  return { $or: filter };
 }

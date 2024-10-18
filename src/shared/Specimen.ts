@@ -131,45 +131,8 @@ export class Specimen {
 }
 
 async function specimenPrefilter(): Promise<EntityFilter<Collection>> {
-  let filter: EntityFilter<Collection>[] = [
-    {
-      visibility_setting: 'public',
-    },
-  ]
-  console.log('pre-filter: ', filter)
-  let allowedCollections: Collection[] = []
-
-  if (remult.authenticated()) {
-    filter.push({
-      visibility_setting: 'authenticated',
-    })
-
-    const user = await repo(User).findId(remult.user!.id)
-    filter.push({
-      visibility_setting: ['private', 'specified_users'],
-      owner: user!,
-    })
-
-    await repo(AccessToCollection).find({
-      where: {
-        userId: remult.user!.id,
-      },
-    })
-
-    allowedCollections.push(
-      ...(
-        await repo(AccessToCollection).find({
-          include: { collection: true },
-          where: {
-            userId: remult.user!.id,
-          },
-        })
-      ).map((x) => x.collection!),
-    )
-  }
-  allowedCollections.push(...(await repo(Collection).find({ where: { $or: filter } })))
-  console.log('filter: ', filter)
-  console.log('allowedCollections: ', allowedCollections)
+  let allowedCollections: Collection[] = await repo(Collection).find()
+  console.log("specimenPrefilter(): allowedCollections: ", allowedCollections.length, " ", allowedCollections)
   return {
     collection: allowedCollections,
   }
