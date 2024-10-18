@@ -1,7 +1,7 @@
 import type { ProviderType } from '@auth/sveltekit/providers'
 import type { hash } from '@node-rs/argon2'
 
-import { Allow, Entity, Fields, remult, Validators } from 'remult'
+import { Allow, Entity, Fields, Relations, remult, repo, Validators } from 'remult'
 
 export const Roles = {
   admin: 'admin',
@@ -71,4 +71,16 @@ export class User {
   providerAccountId = ''
 
   static hashPassword: typeof hash // A static function for password hashing, injected in `auth.ts`
+}
+
+export function OwnerField() {
+  return Relations.toOne(() => User, {
+    allowApiUpdate: false,
+    saving: async (_, fieldRef, e) => {
+      if (e.isNew) {
+        if (remult.user?.id) fieldRef.value = <User>await repo(User).findId(remult.user.id)
+        if (fieldRef.valueIsNull()) fieldRef.error = 'requires signed in user'
+      }
+    },
+  })
 }

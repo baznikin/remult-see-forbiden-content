@@ -6,54 +6,59 @@ import { Collection } from './Collection'
 import { Specimen } from './Specimen'
 import { User } from './User'
 
-describe('model Collection tests', async () => {
+describe('access control on models Collection and Specimen', async () => {
+  let owner: User, friend: User, other_user: User
+  let c_public: Collection, c_private: Collection, c_auth: Collection, c_custom: Collection
   beforeEach(async () => {
     User.hashPassword = async (s) => {
       return <string>s
     }
     remult.dataProvider = new InMemoryDataProvider()
 
-    let owner = await repo(User).insert({
+    owner = await repo(User).insert({
       id: 'owner',
       email: 'e1@e',
     })
 
-    let friend = await repo(User).insert({
-      id: 'user2',
+    friend = await repo(User).insert({
+      id: 'friend',
       email: 'e2@e',
     })
 
-    let other_user = await repo(User).insert({
+    other_user = await repo(User).insert({
       id: 'user3',
       email: 'e3@e',
     })
 
-    let c_public = await repo(Collection).insert({
+    c_public = await repo(Collection).insert({
       id: '1',
-      owner: owner,
       name: 'public collection',
+      owner: owner,
       prefix: 'c1',
       visibility_setting: 'public',
     })
-    let c_auth = await repo(Collection).insert({
+    c_auth = await repo(Collection).insert({
       id: '2',
       name: 'collection for authenticated users',
+      owner: owner,
       prefix: 'c2',
       visibility_setting: 'authenticated',
     })
-    let c_private = await repo(Collection).insert({
+    c_private = await repo(Collection).insert({
       id: '3',
       name: 'private collection',
+      owner: owner,
       prefix: 'c3',
       visibility_setting: 'private',
     })
-    let c_custom = await repo(Collection).insert({
+    c_custom = await repo(Collection).insert({
       id: '4',
       name: 'collection for my group',
+      owner: owner,
       prefix: 'c4',
       visibility_setting: 'specified_users',
-      visibility_allowed_user_ids: ['user2'],
     })
+    repo(Collection).relations(c_custom).allowedUsers.insert({ user: friend })
 
     let s1 = await repo(Specimen).insert({
       id: 's1',
@@ -93,13 +98,33 @@ describe('model Collection tests', async () => {
     })
   })
 
-  // test('Anon user can see only public Specimens', async () => {
-  //   remult.user = undefined
-  //   expect((await repo(Specimen).find()).length).toBe(1)
-  // })
+  test('Anon user can see only `public` Collections', async () => {
+    remult.user = undefined
+    console.log('test 1')
+    expect((await repo(Collection).find()).length).toBe(1)
+  })
 
-  // test('Authenticated user can see public and authenticated Specimens', async () => {
-  //   remult.user = owner
-  //   expect((await repo(Specimen).find()).length).toBe(2)
-  // })
+  test('Owner can see all Specimens', async () => {
+    remult.user = owner
+    console.log('test 2')
+    expect((await repo(Specimen).find()).length).toBe(4)
+  })
+
+  test('Anon user can see Specimens only from `public` collections', async () => {
+    remult.user = undefined
+    console.log('test 3')
+    expect((await repo(Specimen).find()).length).toBe(1)
+  })
+
+  test('"Friended" user can see Specimens from 3 collections', async () => {
+    remult.user = friend
+    console.log('test 4')
+    expect((await repo(Specimen).find()).length).toBe(3)
+  })
+
+  test('Other authenticated user can see Specimens from `public` and `authenticated` collections', async () => {
+    remult.user = other_user
+    console.log('test 5')
+    expect((await repo(Specimen).find()).length).toBe(2)
+  })
 })

@@ -12,12 +12,13 @@ describe('model Identification tests', async () => {
   let c1: Collection
   let s1: Specimen
   let t1: Taxa
+  let u1: User
   beforeEach(async () => {
     User.hashPassword = async (s) => {
       return <string>s
     }
     remult.dataProvider = new InMemoryDataProvider()
-    let u1 = await repo(User).insert({
+    u1 = await repo(User).insert({
       id: 'owner',
       email: 'e1@e',
     })
@@ -41,9 +42,9 @@ describe('model Identification tests', async () => {
       species: 'taxa1',
       authorship: 'Me (1)',
     })
-    console.log('before: ', s1.collection?.name)
-    await repo(Specimen).relations(s1).identifications.insert({ status: 'accepted', taxa: t1 })
-    console.log('after')
+    await repo(Specimen)
+      .relations(s1)
+      .identifications.insert({ status: 'accepted', taxa: t1, owner: u1 })
   })
 
   test('New Identification updates previous one as out dated', async () => {
@@ -53,6 +54,7 @@ describe('model Identification tests', async () => {
     let newId = await repo(Identification).insert({
       specimen: s1,
       taxa: t1,
+      owner: u1,
       status: 'accepted',
     })
     currentId = <Identification>(
@@ -75,6 +77,7 @@ describe('model Identification tests', async () => {
     let newId = await repo(Identification).insert({
       specimen: s1,
       taxa: t2,
+      owner: u1,
       status: 'accepted',
     })
 

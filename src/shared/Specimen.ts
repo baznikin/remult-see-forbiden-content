@@ -1,9 +1,19 @@
-import { Allow, Entity, EntityBase, Fields, Relations, remult, Validators } from 'remult'
+import {
+  Allow,
+  Entity,
+  EntityBase,
+  Fields,
+  Relations,
+  remult,
+  repo,
+  Validators,
+  type EntityFilter,
+} from 'remult'
 
-import { Collection } from './Collection'
+import { AccessToCollection, Collection } from './Collection'
 import { Identification } from './Identification'
 import { Taxa } from './Taxa'
-import { User } from './User'
+import { OwnerField, User } from './User'
 
 const spreadings = ['ventral', 'dorsal', 'lateral', 'natural', 'other'] as const
 export type SpreadingType = (typeof spreadings)[number]
@@ -13,11 +23,8 @@ export type DevelopmentStage = (typeof stages)[number]
 
 @Entity('specimens', {
   allowApiCrud: Allow.authenticated,
-  // apiPrefilter: (sss) => {
-  //   return entity?.collection.visibility_setting == 'public'
-  // },
-
-  // backendPrefilter: () => remult.authenticated()?{}:{id:[]}
+  apiPrefilter: async () => specimenPrefilter(),
+  backendPrefilter: async () => specimenPrefilter(),
 })
 export class Specimen {
   @Fields.cuid({
@@ -39,55 +46,47 @@ export class Specimen {
   @Relations.toOne(() => Taxa, { defaultIncluded: true })
   acceptedTaxa?: Taxa
 
-  @Relations.toOne(() => User, {
-    allowApiUpdate: false,
-    required: true,
-    validate: [Validators.notNull],
-    saving: async (_, fieldRef, e) => {
-      if (remult.user?.id) fieldRef.value = <User>await remult.repo(User).findId(remult.user.id)
-      // TODO add fallback as 'system user'?
-    },
-  })
-  owner: User = <User>remult.user
+  @OwnerField()
+  owner!: User
 
   @Fields.string({
     required: true,
     caption: 'Specimen ID',
   })
-  collection_id: string = ''
+  collection_id = ''
 
   @Fields.string({
     required: true,
     caption: 'Locality',
   })
-  collection_location: string = ''
+  collection_location = ''
 
   @Fields.string({
     caption: 'Collection conditions',
   })
-  collection_conditions: string = ''
+  collection_conditions = ''
 
   @Fields.string({
     required: true,
     caption: 'Collection date',
   })
-  collection_date: string = ''
+  collection_date = ''
 
   @Fields.string({
     required: true,
     caption: 'Leg. collector name',
   })
-  collection_collector: string = ''
+  collection_collector = ''
 
   @Fields.string({
     caption: 'GPS coordinates',
   })
-  collection_gps: string = ''
+  collection_gps = ''
 
   @Fields.string({
     caption: 'Comment',
   })
-  comment: string = ''
+  comment = ''
 
   @Fields.literal(() => spreadings, {
     caption: 'Spreading',
@@ -102,17 +101,17 @@ export class Specimen {
   @Fields.string({
     caption: 'Storage location',
   })
-  storage_location: string = ''
+  storage_location = ''
 
   @Fields.number({
     caption: 'Wing length',
   })
-  metrics_winglength = ''
+  metrics_winglength = 0
 
   @Fields.number({
     caption: 'Wing span',
   })
-  metrics_wingspan = ''
+  metrics_wingspan = 0
 
   @Fields.string({
     caption: 'Ventral view',
@@ -129,22 +128,51 @@ export class Specimen {
 
   @Fields.updatedAt()
   updatedAt?: Date
+}
 
-  // // tmp
-  //   @Fields.string()
-  //   Sex?: string
-  //   @Fields.string()
-  //   Det_Genus?: string
-  //   @Fields.string()
-  //   Det_Species?: string
-  //   @Fields.string()
-  //   Det_Form?: string
-  //   @Fields.string()
-  //   Det_Author?: string
-  //   @Fields.string()
-  //   Det_Name?: string
-  //   @Fields.string()
-  //   Det_Date?: string
+async function specimenPrefilter(): Promise<EntityFilter<Collection>> {
+  let filter: EntityFilter<Collection>[] = [
+    {
+      visibility_setting: 'public',
+    },
+  ]
+  console.log('pre-filter: ', filter)
+  let allowedCollections: Collection[] = []
+
+  if (remult.authenticated()) {
+    filter.push({
+      visibility_setting: 'authenticated',
+    })
+
+    const user = await repo(User).findId(remult.user!.id)
+    filter.push({
+      visibility_setting: ['private', 'specified_users'],
+      owner: user!,
+    })
+
+    await repo(AccessToCollection).find({
+      where: {
+        userId: remult.user!.id,
+      },
+    })
+
+    allowedCollections.push(
+      ...(
+        await repo(AccessToCollection).find({
+          include: { collection: true },
+          where: {
+            userId: remult.user!.id,
+          },
+        })
+      ).map((x) => x.collection!),
+    )
+  }
+  allowedCollections.push(...(await repo(Collection).find({ where: { $or: filter } })))
+  console.log('filter: ', filter)
+  console.log('allowedCollections: ', allowedCollections)
+  return {
+    collection: allowedCollections,
+  }
 }
 
 // export class SpecimensController {

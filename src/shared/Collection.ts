@@ -1,6 +1,6 @@
-import { Allow, Entity, Fields, Relations, remult, Validators } from 'remult'
+import { Allow, Entity, Fields, Relations, Validators } from 'remult'
 
-import { User } from './User'
+import { OwnerField, Roles, User } from './User'
 
 const visibility_settings = ['public', 'authenticated', 'private', 'specified_users'] as const
 export type VisibilitySetting = (typeof visibility_settings)[number]
@@ -8,13 +8,6 @@ export type VisibilitySetting = (typeof visibility_settings)[number]
 @Entity('collections', {
   allowApiCrud: Allow.authenticated,
   allowApiRead: true,
-  apiPrefilter: () => {
-    // Admins can access all rows
-    if (remult.isAllowed('admin')) return {}
-
-    // Non-admins can only access rows where they are the owner
-    return { owner: remult.user!.id }
-  },
   // backendPrefilter: () => remult.authenticated()?{}:{id:[]}
 })
 export class Collection {
@@ -25,49 +18,58 @@ export class Collection {
   })
   id!: string
 
-  @Relations.toOne(() => User, {
-    allowApiUpdate: false,
-    validate: [Validators.notNull],
-    saving: async (_, fieldRef, e) => {
-      if (e.isNew && !fieldRef.value)
-        if (remult.user?.id) fieldRef.value = <User>await remult.repo(User).findId(remult.user.id)
-      // TODO add fallback as 'system user'?
-    },
-  })
-  owner: User = <User>remult.user
+  @OwnerField()
+  owner!: User
 
   @Fields.string({
     required: true,
     caption: 'Collection name',
   })
-  name: string = ''
+  name = ''
 
   @Fields.string({
     required: true,
     validate: [Validators.unique],
     caption: 'Prefix',
   })
-  prefix: string = ''
+  prefix = ''
 
   @Fields.string({
     required: true,
     caption: 'Prefix-name separator',
   })
-  separator: string = '-'
+  separator = '-'
 
   @Fields.literal(() => visibility_settings, {
     caption: 'Visibility settings',
   })
   visibility_setting: VisibilitySetting = 'public'
 
-  @Fields.string({
-    caption: 'Users on allowed to see',
-  })
-  visibility_allowed_user_ids?: string[]
+  // used only if `visibility_setting` == `specified_users`
+  @Relations.toMany(() => AccessToCollection, 'collectionId')
+  allowedUsers?: AccessToCollection[]
 
   @Fields.createdAt()
   createdAt?: Date
 
   @Fields.updatedAt()
   updatedAt?: Date
+}
+
+@Entity<AccessToCollection>('accessToCollection', {
+  id: {
+    collectionId: true,
+    userId: true,
+  },
+})
+export class AccessToCollection {
+  @Fields.string()
+  collectionId = ''
+  @Fields.string()
+  userId = ''
+  @Relations.toOne<AccessToCollection, Collection>(() => Collection, 'collectionId')
+  collection?: Collection
+  @Relations.toOne<AccessToCollection, User>(() => User, 'userId')
+  user?: User
+  // TODO add `acitve: boolean` field to allow change visibility setting and still keep vist of users
 }

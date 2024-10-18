@@ -55,55 +55,55 @@ export class Taxa {
   @Fields.string({
     caption: 'Superfamily',
   })
-  superfamily: string = ''
+  superfamily = ''
 
   @Fields.string({
     caption: 'Family',
   })
-  family: string = ''
+  family = ''
 
   @Fields.string({
     caption: 'Sub-family',
   })
-  subfamily: string = ''
+  subfamily = ''
 
   @Fields.string({
     required: true,
     caption: 'Genus',
   })
-  genus: string = ''
+  genus = ''
 
   @Fields.string({
     required: true,
     caption: 'Species',
   })
-  species: string = ''
+  species = ''
 
   @Fields.string({
     required: true,
     caption: 'Authorship',
   })
-  authorship: string = ''
+  authorship = ''
 
   @Fields.string({
     caption: 'Link to GBIF',
   })
-  link_gbif: string = ''
+  link_gbif = ''
 
   @Fields.string({
     caption: 'Link to Lepiforum.de',
   })
-  link_lw: string = ''
+  link_lw = ''
 
   @Fields.string({
     caption: 'Link to ERMAK24.ru',
   })
-  link_ermak: string = ''
+  link_ermak = ''
 
   @Fields.string({
     caption: 'Link to OMFLIES.ru',
   })
-  link_omflies: string = ''
+  link_omflies = ''
 
   @Fields.createdAt()
   createdAt?: Date

@@ -1,8 +1,8 @@
-import { Entity, EntityBase, Fields, Relations, remult, Validators } from 'remult'
+import { Entity, EntityBase, Fields, Relations, remult, repo, Validators } from 'remult'
 
 import { Specimen } from './Specimen'
 import { Taxa } from './Taxa'
-import { User } from './User'
+import { OwnerField, User } from './User'
 
 const sexes = ['unknown', 'male', 'female', 'gynandromorph'] as const
 export type Sex = (typeof sexes)[number]
@@ -27,7 +27,7 @@ export type IdentificationStatus = (typeof idstatuses)[number]
       // outdate previous accepted identification
       await remult
         .repo(Specimen)
-        .relations(<Specimen>/* get rid of ts(2345) */ s)
+        .relations(s!)
         .identifications.updateMany({
           where: {
             id: { $not: id.id },
@@ -38,7 +38,7 @@ export type IdentificationStatus = (typeof idstatuses)[number]
           },
         })
 
-      await remult.repo(Specimen).update(s!.id, { acceptedTaxa: t })
+      await repo(Specimen).update(s!, { acceptedTaxa: t })
     }
   },
 })
@@ -62,15 +62,8 @@ export class Identification {
   })
   specimen?: Specimen
 
-  @Relations.toOne(() => User, {
-    allowApiUpdate: false,
-    validate: [Validators.notNull],
-    saving: async (_, fieldRef, e) => {
-      if (remult.user?.id) fieldRef.value = <User>await remult.repo(User).findId(remult.user.id)
-      // TODO add fallback as 'system user'?
-    },
-  })
-  owner: User = <User>remult.user
+  @OwnerField()
+  owner!: User
 
   @Fields.literal(() => idstatuses, {
     caption: 'Status',
@@ -81,25 +74,25 @@ export class Identification {
     caption: 'Form name',
     // TODO add validation - can be accessible only for "species" taxa ideintification (not genera or higher)
   })
-  form?: string = ''
+  form? = ''
 
   @Fields.string({
     caption: 'Form authorship',
     // TODO add validation - can be accessible only for "species" taxa ideintification (not genera or higher)
   })
-  formAuthorship?: string = ''
+  formAuthorship? = ''
 
   // TODO - in this case taxa points to parent taxon rank
   @Fields.string({
     caption: 'Subspecies name',
   })
-  customTaxon?: string = ''
+  customTaxon? = ''
 
   // TODO - in this case taxa points to parent taxon rank
   @Fields.string({
     caption: 'Subspecies authorship',
   })
-  customTaxonAuthorship?: string = ''
+  customTaxonAuthorship? = ''
 
   @Fields.literal(() => sexes, {
     caption: 'Sex',
@@ -116,12 +109,12 @@ export class Identification {
   @Fields.string({
     caption: 'Who make identification',
   })
-  idName: string = ''
+  idName = ''
 
   @Fields.string({
     caption: 'Det. date',
   })
-  idDate: string = ''
+  idDate = ''
 
   @Fields.createdAt()
   createdAt?: Date
